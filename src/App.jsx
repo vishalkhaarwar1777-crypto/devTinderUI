@@ -1,19 +1,28 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Body from "./component/Body";
+import Login from "./component/login";
+import Signup from "./component/Signup";
+import { Provider } from "react-redux";
+import appStore from "./utils/appStore";
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-     <div>
-      <h1>Hello world</h1>
-     </div>
-    </>
-  )
+    <Provider store={appStore}>
+      <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Body />}>
+          <Route
+            index
+            element={<h1 className="p-10 text-3xl">DevTinder Home</h1>}
+          />
+          <Route path="login" element={<Login />} />
+          <Route path="signup" element={<Signup />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+    </Provider>
+  );
 }
 
-export default App
+export default App;
