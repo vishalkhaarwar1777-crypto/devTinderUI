@@ -86,10 +86,10 @@ const Navbar = () => {
   const pendingCount = Array.isArray(requests) ? requests.length : 0;
 
   const navLinkClass = ({ isActive }) =>
-    `inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+    `relative inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-medium transition-colors duration-200 ${
       isActive
-        ? "bg-primary/10 text-primary"
-        : "text-base-content/55 hover:bg-base-200/80 hover:text-base-content"
+        ? "bg-primary/10 text-primary ring-1 ring-inset ring-primary/25"
+        : "text-base-content/60 hover:bg-base-200/80 hover:text-base-content"
     }`;
 
   const mobileNavLinkClass = ({ isActive }) =>
@@ -101,12 +101,14 @@ const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-40 border-b border-base-300/60 bg-base-100/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <Logo />
+      <div className="mx-auto grid h-16 max-w-7xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <div className="col-start-1 flex min-w-0 items-center">
+          <Logo />
+        </div>
 
         {user && (
           <nav
-            className="ml-5 hidden items-center gap-1 lg:flex"
+            className="col-start-2 hidden items-center justify-center gap-2 md:flex"
             aria-label="Primary navigation"
           >
             {navItems.map((item) => (
@@ -128,7 +130,7 @@ const Navbar = () => {
           </nav>
         )}
 
-        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+        <div className="col-start-3 flex min-w-0 items-center justify-end gap-1.5 sm:gap-2">
           {user ? (
             <div className="relative" ref={profileRef}>
               <button
@@ -253,7 +255,7 @@ const Navbar = () => {
                 setProfileOpen(false);
                 setLogoutError("");
               }}
-              className="btn btn-ghost btn-square btn-sm lg:hidden"
+              className="btn btn-ghost btn-square btn-sm md:hidden"
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileOpen}
               aria-controls="mobile-navigation"
@@ -264,7 +266,7 @@ const Navbar = () => {
             {mobileOpen && (
               <div
                 id="mobile-navigation"
-                className="absolute right-0 top-[calc(100%+0.6rem)] w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-base-300 bg-base-200 p-2 shadow-2xl shadow-black/40 lg:hidden"
+                className="absolute right-0 top-[calc(100%+0.6rem)] w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-base-300 bg-base-200 p-2 shadow-2xl shadow-black/40 md:hidden"
               >
                 {user ? (
                   <>
