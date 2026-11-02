@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -24,6 +24,8 @@ const Connections = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [activeSkill, setActiveSkill] = useState("");
 
   const didFetchRef = useRef(false);
 
@@ -62,7 +64,59 @@ const Connections = () => {
     fetchConnections();
   }, [fetchConnections]);
 
-  const list = Array.isArray(connections) ? connections : [];
+  const list = useMemo(
+    () => (Array.isArray(connections) ? connections : []),
+    [connections],
+  );
+
+  const availableSkills = useMemo(() => {
+    const counts = new Map();
+
+    list.forEach((connection) => {
+      (connection.skill ?? []).forEach((skill) => {
+        counts.set(skill, (counts.get(skill) ?? 0) + 1);
+      });
+    });
+
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 10)
+      .map(([skill]) => skill);
+  }, [list]);
+
+  const effectiveSkill =
+    activeSkill && availableSkills.includes(activeSkill) ? activeSkill : "";
+
+  const filteredList = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return list.filter((connection) => {
+      const skills = connection.skill ?? [];
+
+      if (effectiveSkill && !skills.includes(effectiveSkill)) return false;
+      if (!normalizedQuery) return true;
+
+      const haystack = [
+        connection.firstName,
+        connection.lastName,
+        connection.about,
+        ...skills,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(normalizedQuery);
+    });
+  }, [list, query, effectiveSkill]);
+
+  const hasFilters = Boolean(query.trim() || effectiveSkill);
+
+  const clearFilters = () => {
+    setQuery("");
+    setActiveSkill("");
+  };
+
   const showSkeleton = loading && list.length === 0;
   const showErrorState = Boolean(error) && list.length === 0;
 
@@ -88,11 +142,84 @@ const Connections = () => {
           </button>
         }
       >
-        {list.length > 0 && (
-          <p className="text-xs text-base-content/55">
-            {list.length} {list.length === 1 ? "connection" : "connections"}
-          </p>
-        )}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-sm">
+              <Icon
+                name="search"
+                size={17}
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/50"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search connections by name, skill, or bio…"
+                aria-label="Search your connections"
+                className="input input-bordered h-11 w-full border-base-300 bg-base-200/60 pl-10 pr-10 text-sm placeholder:text-base-content/60 focus:border-primary/50"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-base-content/55 transition-colors hover:bg-base-300 hover:text-base-content"
+                  aria-label="Clear search"
+                >
+                  <Icon name="x" size={14} />
+                </button>
+              )}
+            </div>
+
+            {availableSkills.length > 0 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:justify-end lg:pb-0">
+                <span className="hidden shrink-0 font-mono text-[10px] uppercase tracking-wider text-base-content/50 sm:inline">
+                  Skills
+                </span>
+
+                {availableSkills.map((skill) => {
+                  const isActive = effectiveSkill === skill;
+
+                  return (
+                    <button
+                      key={skill}
+                      type="button"
+                      onClick={() => setActiveSkill(isActive ? "" : skill)}
+                      aria-pressed={isActive}
+                      className={`shrink-0 rounded-full border px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
+                        isActive
+                          ? "border-primary/40 bg-primary/15 text-primary"
+                          : "border-base-300 bg-base-200/50 text-base-content/50 hover:border-primary/30 hover:text-base-content/80"
+                      }`}
+                    >
+                      {skill}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {list.length > 0 && (
+            <div className="flex items-center justify-between gap-3 text-xs text-base-content/55">
+              <p>
+                {filteredList.length}{" "}
+                {filteredList.length === 1 ? "connection" : "connections"}
+                {hasFilters ? ` of ${list.length}` : ""}
+              </p>
+
+              {hasFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-primary transition-colors hover:bg-primary/10"
+                >
+                  <Icon name="x" size={13} />
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </PageHeader>
 
       {error && list.length > 0 && (
@@ -143,9 +270,25 @@ const Connections = () => {
             </Link>
           }
         />
+      ) : filteredList.length === 0 ? (
+        <EmptyState
+          icon="search"
+          title="No connections match those filters"
+          description="Try a different skill or a shorter search term. You can also clear everything and browse your full network."
+          action={
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="btn btn-primary btn-sm gap-2"
+            >
+              <Icon name="x" size={15} />
+              Clear filters
+            </button>
+          }
+        />
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {list.map((connection) => {
+          {filteredList.map((connection) => {
             const fullName = getFullName(connection) || "Developer";
             const meta = [
               connection.age ? `${connection.age} years` : "",

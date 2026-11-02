@@ -33,7 +33,7 @@ const AuthLayout = ({ title, subtitle, children }) => (
       </h1>
 
       <p className="mt-5 max-w-md text-base leading-7 text-base-content/55">
-        DevTinder is a focused network for developers. Share what you build,
+        CodeMates is a focused network for developers. Share what you build,
         connect with complementary skills, and start the conversation.
       </p>
 
@@ -68,7 +68,7 @@ const AuthLayout = ({ title, subtitle, children }) => (
         <pre className="overflow-x-auto p-4 font-mono text-[12.5px] leading-6 text-base-content/65">
           <code>
             <span className="text-primary">const</span> match ={" "}
-            <span className="text-accent">await</span> DevTinder.
+            <span className="text-accent">await</span> CodeMates.
             <span className="text-secondary">connect</span>({"{"}
             {"\n"}  skills: [<span className="text-success">"React"</span>,{" "}
             <span className="text-success">"Node.js"</span>],{"\n"}  mindset:{" "}

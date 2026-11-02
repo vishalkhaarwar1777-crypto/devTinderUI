@@ -184,7 +184,7 @@ const EditProfile = () => {
       <PageHeader
         eyebrow="Account"
         title="Edit your profile"
-        description="A clear, honest profile helps the right developers find you. Changes are saved to your DevTinder account."
+        description="A clear, honest profile helps the right developers find you. Changes are saved to your CodeMates account."
         actions={
           <Link
             to="/profile"
@@ -436,7 +436,7 @@ const EditProfile = () => {
                     GENDER_LABELS[formData.gender] || "",
                   ]
                     .filter(Boolean)
-                    .join(" · ") || "Developer on DevTinder"}
+                    .join(" · ") || "Developer on CodeMates"}
                 </p>
               </div>
             </div>

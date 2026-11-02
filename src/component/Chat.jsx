@@ -1,198 +1,311 @@
-import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
-import { Link, useParams } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import Alert from "./ui/Alert";
 import Avatar from "./ui/Avatar";
-import EmptyState from "./ui/EmptyState";
 import Icon from "./ui/Icon";
 import SkillBadge from "./ui/SkillBadge";
-import { BASE_URL, GENDER_LABELS } from "../utils/constants";
-import { addConnections } from "../utils/connectionSlice";
-import {
-  getFullName,
-  normalizeUsers,
-} from "../utils/normalizeUser";
-import { getErrorMessage } from "../utils/apiError";
 
 const Chat = () => {
-  const { connectionId } = useParams();
-  const connections = useSelector((store) => store.connections);
-  const dispatch = useDispatch();
+  // Sample developer data
+  const connection = {
+    _id: "user-2",
+    firstName: "Rahul",
+    lastName: "Sharma",
+    age: 24,
+    gender: "Male",
+    profilePhoto: "",
+    about: "Full Stack Developer. Interested in building projects.",
+    skill: ["React", "Node.js", "MongoDB", "JavaScript"],
+  };
 
-  const connectionFromStore = useMemo(() => {
-    if (!Array.isArray(connections)) return null;
-    return connections.find((item) => item._id === connectionId) ?? null;
-  }, [connections, connectionId]);
+  const currentUser = {
+    _id: "user-1",
+  };
 
-  const [fetchedConnection, setFetchedConnection] = useState(null);
-  const [loading, setLoading] = useState(!connectionFromStore);
-  const [error, setError] = useState("");
+  // Sample messages
+  const [messages, setMessages] = useState([
+    {
+      _id: "1",
+      senderId: "user-2",
+      text: "Hey! How are you?",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      _id: "2",
+      senderId: "user-1",
+      text: "I'm good! What about you?",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      _id: "3",
+      senderId: "user-2",
+      text: "I'm doing great. Are you working on any project?",
+      createdAt: new Date().toISOString(),
+    },
+  ]);
 
+  const [draft, setDraft] = useState("");
+  const [sendError, setSendError] = useState("");
+
+  const threadRef = useRef(null);
+
+  // Scroll to latest message
   useEffect(() => {
-    if (connectionFromStore) return undefined;
+    const node = threadRef.current;
 
-    let active = true;
+    if (node) {
+      node.scrollTop = node.scrollHeight;
+    }
+  }, [messages]);
 
-    const loadConnection = async () => {
-      try {
-        const res = await axios.get(`${BASE_URL}/user/connection`, {
-          withCredentials: true,
-        });
+  // Send message locally
+  const sendMessage = () => {
+    const text = draft.trim();
 
-        const users = normalizeUsers(res.data?.data ?? []);
-        dispatch(addConnections(users));
+    if (!text) return;
 
-        if (!active) return;
-
-        const match = users.find((item) => item._id === connectionId) ?? null;
-        setFetchedConnection(match);
-
-        if (!match) {
-          setError(
-            "This developer is not in your connections. They may have removed the connection.",
-          );
-        }
-      } catch (err) {
-        if (active) {
-          setError(
-            getErrorMessage(err, "Could not load this conversation."),
-          );
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
+    const newMessage = {
+      _id: Date.now().toString(),
+      senderId: currentUser._id,
+      text,
+      createdAt: new Date().toISOString(),
     };
 
-    loadConnection();
+    setMessages((previous) => [...previous, newMessage]);
+    setDraft("");
+    setSendError("");
+  };
 
-    return () => {
-      active = false;
-    };
-  }, [connectionFromStore, connectionId, dispatch]);
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage();
+    }
+  };
 
-  const connection = connectionFromStore ?? fetchedConnection;
-  const fullName = getFullName(connection) || "Developer";
+  const formatTime = (value) => {
+    return new Date(value).toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
 
-  if (loading && !connection) {
-    return (
-      <div className="page-enter mx-auto flex min-h-[50vh] max-w-3xl items-center justify-center">
-        <div className="flex items-center gap-2.5 text-sm text-base-content/50">
-          <span className="loading loading-spinner loading-sm text-primary" />
-          Opening conversation…
-        </div>
-      </div>
-    );
-  }
-
-  if (!connection) {
-    return (
-      <div className="page-enter mx-auto max-w-2xl">
-        <EmptyState
-          icon="message"
-          title="Conversation unavailable"
-          description={
-            error ||
-            "We couldn't find this developer in your connections."
-          }
-          action={
-            <Link to="/connections" className="btn btn-primary btn-sm gap-2">
-              <Icon name="users" size={15} />
-              Back to connections
-            </Link>
-          }
-        />
-      </div>
-    );
-  }
-
-  const meta = [
-    connection.age ? `${connection.age} years` : "",
-    GENDER_LABELS[connection.gender] || "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const fullName = `${connection.firstName} ${connection.lastName}`;
 
   return (
-    <div className="page-enter mx-auto max-w-3xl">
-      <Link
-        to="/connections"
-        className="mb-5 inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-base-content/50 transition-colors hover:bg-base-200 hover:text-base-content"
-      >
-        <Icon name="arrowRight" size={15} className="rotate-180" />
-        Back to connections
-      </Link>
+    <div className="page-enter mx-auto max-w-5xl">
 
-      <div className="overflow-hidden rounded-3xl border border-base-300 bg-base-200/60">
-        <header className="flex flex-col gap-4 border-b border-base-300/60 p-5 sm:flex-row sm:items-center sm:p-6">
-          <Avatar
-            src={connection.profilePhoto}
-            user={connection}
-            size="lg"
-            className="ring-2 ring-primary/25"
-          />
+      {/* Top navigation */}
+      <div className="mb-5 flex items-center justify-between">
+        <Link
+          to="/connections"
+          className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-base-content/50 hover:bg-base-200"
+        >
+          <Icon name="arrowRight" size={15} className="rotate-180" />
+          Back to connections
+        </Link>
 
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-xl font-semibold tracking-tight">
-              {fullName}
-            </h1>
-            <p className="mt-1 text-xs text-base-content/60">
-              {meta || "Connected developer"}
-            </p>
-          </div>
+        <span className="font-mono text-xs uppercase text-base-content/40">
+          Direct message
+        </span>
+      </div>
 
-          <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-success/20 bg-success/10 px-3 py-1 text-xs text-success">
-            <span className="size-1.5 rounded-full bg-success" />
-            Connected
-          </span>
-        </header>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_19rem]">
 
-        <div className="p-5 sm:p-6">
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-base-300 bg-base-100/30 px-6 py-14 text-center">
-            <span className="grid size-14 place-items-center rounded-2xl border border-base-300 bg-base-200 text-primary">
-              <Icon name="message" size={24} />
+        {/* Chat section */}
+        <section className="flex h-[calc(100vh-15rem)] min-h-[30rem] max-h-[46rem] flex-col overflow-hidden rounded-3xl border border-base-300 bg-base-200/60">
+
+          {/* Chat header */}
+          <header className="flex items-center gap-3 border-b border-base-300/60 px-4 py-3.5">
+
+            <Avatar
+              src={connection.profilePhoto}
+              user={connection}
+              size="md"
+            />
+
+            <div className="min-w-0 flex-1">
+              <h1 className="text-sm font-semibold">
+                {fullName}
+              </h1>
+
+              <p className="text-xs text-base-content/55">
+                {connection.age} years · {connection.gender}
+              </p>
+            </div>
+
+            <span className="rounded-full bg-success/10 px-3 py-1 text-xs text-success">
+              Connected
             </span>
 
-            <h2 className="mt-5 text-lg font-semibold tracking-tight">
-              Messaging is coming soon
-            </h2>
-            <p className="mt-2 max-w-md text-sm leading-6 text-base-content/50">
-              Your connection is saved, but the DevTinder API does not expose a
-              messaging endpoint yet. This screen is ready for it when it ships.
+          </header>
+
+          {/* Messages */}
+          <div
+            ref={threadRef}
+            className="flex-1 overflow-y-auto px-3 py-5 sm:px-5"
+          >
+            {messages.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-base-content/50">
+                Start your conversation!
+              </div>
+            ) : (
+              <div className="space-y-3">
+
+                {messages.map((message) => {
+                  const mine =
+                    message.senderId === currentUser._id;
+
+                  return (
+                    <div
+                      key={message._id}
+                      className={`flex items-end gap-2 ${
+                        mine ? "justify-end" : "justify-start"
+                      }`}
+                    >
+                      {!mine && (
+                        <Avatar
+                          src={connection.profilePhoto}
+                          user={connection}
+                          size="xs"
+                        />
+                      )}
+
+                      <div
+                        className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm ${
+                          mine
+                            ? "rounded-br-md bg-primary text-primary-content"
+                            : "rounded-bl-md border border-base-300 bg-base-100 text-base-content"
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap break-words">
+                          {message.text}
+                        </p>
+
+                        <p className="mt-1 text-[10px] opacity-60">
+                          {formatTime(message.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+
+              </div>
+            )}
+          </div>
+
+          {/* Error message */}
+          {sendError && (
+            <Alert
+              type="error"
+              message={sendError}
+              onDismiss={() => setSendError("")}
+            />
+          )}
+
+          {/* Message input */}
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              sendMessage();
+            }}
+            className="border-t border-base-300/60 p-3 sm:p-4"
+          >
+            <div className="flex items-end gap-2 rounded-2xl border border-base-300 bg-base-100/50 p-2">
+
+              <textarea
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={handleKeyDown}
+                rows={Math.min(4, draft.split("\n").length)}
+                maxLength={2000}
+                placeholder={`Message ${connection.firstName}...`}
+                className="min-h-9 max-h-32 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm focus:outline-none"
+              />
+
+              <button
+                type="submit"
+                disabled={!draft.trim()}
+                className="btn btn-primary btn-sm btn-square"
+              >
+                <Icon name="send" size={15} />
+              </button>
+
+            </div>
+
+            <p className="mt-2 px-1 text-[11px] text-base-content/45">
+              Enter to send · Shift + Enter for a new line
             </p>
+          </form>
+
+        </section>
+
+        {/* Developer profile */}
+        <aside className="space-y-4">
+
+          <section className="rounded-2xl border border-base-300 bg-base-200/60 p-5">
+
+            <h2 className="font-mono text-xs uppercase text-base-content/55">
+              Developer
+            </h2>
+
+            <div className="mt-3 flex items-center gap-3">
+              <Avatar
+                src={connection.profilePhoto}
+                user={connection}
+                size="md"
+              />
+
+              <div>
+                <p className="text-sm font-medium">
+                  {fullName}
+                </p>
+
+                <p className="text-xs text-base-content/55">
+                  {connection.age} years · {connection.gender}
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-4 text-sm leading-6 text-base-content/60">
+              {connection.about}
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {connection.skill.map((skill) => (
+                <SkillBadge key={skill}>
+                  {skill}
+                </SkillBadge>
+              ))}
+            </div>
+
+          </section>
+
+          <section className="rounded-2xl border border-base-300 bg-base-100/40 p-5">
+
+            <h2 className="text-sm font-medium">
+              Start strong
+            </h2>
+
+            <ul className="mt-3 space-y-2 text-xs text-base-content/60">
+              <li>• Talk about your projects.</li>
+              <li>• Ask about their skills.</li>
+              <li>• Share your ideas.</li>
+            </ul>
 
             <Link
               to="/connections"
-              className="btn btn-primary btn-sm mt-6 gap-2"
+              className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
             >
-              <Icon name="users" size={15} />
-              View all connections
+              Browse connections
+              <Icon name="arrowRight" size={13} />
             </Link>
-          </div>
 
-          {connection.about && (
-            <section className="mt-6">
-              <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-base-content/55">
-                About {connection.firstName || "this developer"}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-base-content/60">
-                {connection.about}
-              </p>
-            </section>
-          )}
+          </section>
 
-          {connection.skill?.length > 0 && (
-            <section className="mt-6">
-              <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-base-content/55">
-                Skills
-              </h2>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {connection.skill.map((skill) => (
-                  <SkillBadge key={skill}>{skill}</SkillBadge>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
+        </aside>
+
       </div>
     </div>
   );

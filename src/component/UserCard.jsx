@@ -42,7 +42,7 @@ const UserCard = ({
           </h2>
 
           <p className="mt-1 text-xs text-base-content/60">
-            {meta || "Developer on DevTinder"}
+            {meta || "Developer on CodeMates"}
           </p>
         </div>
       </div>

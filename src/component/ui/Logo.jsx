@@ -9,7 +9,7 @@ const Logo = ({ compact = false, className = "" }) => {
       </span>
       {!compact && (
         <span className="text-[1.05rem] font-semibold tracking-tight text-base-content">
-          Dev<span className="text-primary">Tinder</span>
+          Code<span className="text-primary">Mates</span>
         </span>
       )}
     </>
@@ -30,7 +30,7 @@ const Logo = ({ compact = false, className = "" }) => {
     <Link
       to="/"
       className={`group inline-flex items-center gap-2.5 ${className}`}
-      aria-label="DevTinder home"
+      aria-label="CodeMates home"
     >
       {content}
     </Link>

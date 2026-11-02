@@ -383,7 +383,7 @@ const Feed = () => {
                 {loading ? (
                   <span className="loading loading-spinner loading-xs" />
                 ) : (
-                  <Icon name="arrowRight" size={15} />
+                  <Icon name="chevronDown" size={15} />
                 )}
                 {loading ? "Loading…" : "Load more developers"}
               </button>

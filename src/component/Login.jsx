@@ -214,7 +214,7 @@ const Login = () => {
         </div>
 
         <p className="border-t border-base-300/60 pt-4 text-center text-sm text-base-content/50">
-          New to DevTinder?{" "}
+          New to CodeMates?{" "}
           <Link
             to="/signup"
             className="font-medium text-primary hover:underline"

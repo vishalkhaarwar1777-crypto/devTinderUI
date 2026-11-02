@@ -55,7 +55,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 const Footer = () => (
   <footer className="mt-14 border-t border-base-300/60">
     <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-7 text-xs text-base-content/55 sm:flex-row sm:px-6 lg:px-8">
-      <p>© {CURRENT_YEAR} DevTinder. Built for developers.</p>
+      <p>© {CURRENT_YEAR} CodeMates. Built for developers.</p>
       <p className="font-mono tracking-wide">connect · collaborate · ship</p>
     </div>
   </footer>

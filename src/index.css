@@ -5,7 +5,7 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "devtinder";
+  name: "codemates";
   default: true;
   prefersdark: true;
   color-scheme: dark;

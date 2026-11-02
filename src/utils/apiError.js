@@ -39,7 +39,7 @@ export const getErrorMessage = (error, fallback = "Something went wrong.") => {
 
   if (!error.response) {
     if (error.code === "ERR_NETWORK" || error.message === "Network Error") {
-      return "Can't reach the DevTinder API. Make sure the backend is running on localhost:3000.";
+      return "Can't reach the CodeMates API. Make sure the backend is running on localhost:3000.";
     }
     const message = cleanMessage(error.message);
     return message && !looksInternal(message) ? message : fallback;

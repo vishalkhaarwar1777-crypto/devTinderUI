@@ -87,7 +87,7 @@ const Profile = () => {
                   {fullName}
                 </h1>
                 <p className="mt-1 truncate text-sm text-base-content/50">
-                  {user.emailId || "Developer on DevTinder"}
+                  {user.emailId || "Developer on CodeMates"}
                 </p>
               </div>
             </div>
