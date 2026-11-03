@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Navbar from "./Navbar";
 import Logo from "./ui/Logo";
 import Icon from "./ui/Icon";
 import { BASE_URL } from "../utils/constants";
+import apiClient from "../utils/apiClient";
 import { addUser } from "../utils/userSlice";
 import { normalizeUser } from "../utils/normalizeUser";
 import { getErrorMessage, isUnauthorizedError } from "../utils/apiError";
@@ -78,9 +78,7 @@ const Body = () => {
       setError("");
 
       try {
-        const res = await axios.get(`${BASE_URL}/profile/view`, {
-          withCredentials: true,
-        });
+        const res = await apiClient.get("/profile/view");
 
         if (!cancelled) {
           dispatch(addUser(normalizeUser(res.data)));

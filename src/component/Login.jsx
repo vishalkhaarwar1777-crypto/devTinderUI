@@ -1,14 +1,13 @@
 import { useState } from "react";
-import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import AuthLayout from "./ui/AuthLayout";
 import Alert from "./ui/Alert";
 import Icon from "./ui/Icon";
-import { BASE_URL } from "../utils/constants";
+import apiClient from "../utils/apiClient";
 import { addUser } from "../utils/userSlice";
 import { normalizeUser } from "../utils/normalizeUser";
-import { getErrorMessage } from "../utils/apiError";
+import { getErrorMessage, isUnauthorizedError } from "../utils/apiError";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -66,26 +65,26 @@ const Login = () => {
     setApiError("");
 
     try {
-      const res = await axios.post(
-        `${BASE_URL}/login`,
-        {
-          emailId: formData.emailId.trim(),
-          password: formData.password,
-        },
-        { withCredentials: true },
-      );
+      const res = await apiClient.post("/login", {
+        emailId: formData.emailId.trim(),
+        password: formData.password,
+      });
 
-      // /login returns a partial user with legacy field names. Fetch the
-      // canonical profile so Redux always has profilePhoto/skill.
+      // The login response now contains canonical profile fields. Fetching the
+      // profile also proves that the browser accepted the HTTP-only cookie.
       let profile = normalizeUser(res.data?.user);
 
       try {
-        const profileRes = await axios.get(`${BASE_URL}/profile/view`, {
-          withCredentials: true,
-        });
+        const profileRes = await apiClient.get("/profile/view");
         profile = normalizeUser(profileRes.data) || profile;
-      } catch {
-        // Keep the login payload as a fallback; the cookie is already set.
+      } catch (profileError) {
+        if (isUnauthorizedError(profileError)) {
+          setApiError(
+            "Signed in, but your browser did not keep the session cookie. Make sure the API is served over HTTPS and third-party cookies are allowed.",
+          );
+          return;
+        }
+        // A temporary network error is fine: the login payload is enough.
       }
 
       if (profile) dispatch(addUser(profile));

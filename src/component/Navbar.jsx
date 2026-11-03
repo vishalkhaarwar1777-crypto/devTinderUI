@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import axios from "axios";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Avatar from "./ui/Avatar";
 import Icon from "./ui/Icon";
 import Logo from "./ui/Logo";
-import { BASE_URL } from "../utils/constants";
+import apiClient from "../utils/apiClient";
 import { removeUser } from "../utils/userSlice";
 import { removeFeed } from "../utils/feedSlice";
 import { removeConnections } from "../utils/connectionSlice";
@@ -67,7 +66,7 @@ const Navbar = () => {
     setLogoutError("");
 
     try {
-      await axios.post(`${BASE_URL}/logout`, {}, { withCredentials: true });
+      await apiClient.post("/logout");
 
       dispatch(removeUser());
       dispatch(removeFeed());

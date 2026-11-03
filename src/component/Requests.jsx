@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import axios from "axios";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Alert from "./ui/Alert";
@@ -9,7 +8,8 @@ import Icon from "./ui/Icon";
 import PageHeader from "./ui/PageHeader";
 import SkillBadge from "./ui/SkillBadge";
 import { RowSkeleton } from "./ui/Skeletons";
-import { BASE_URL, GENDER_LABELS } from "../utils/constants";
+import apiClient from "../utils/apiClient";
+import { GENDER_LABELS } from "../utils/constants";
 import { addRequests, removeRequest } from "../utils/requestSlice";
 import { removeConnections } from "../utils/connectionSlice";
 import { getFullName, normalizeUser } from "../utils/normalizeUser";
@@ -43,9 +43,7 @@ const Requests = () => {
     setError("");
 
     try {
-      const res = await axios.get(`${BASE_URL}/user/requests/received`, {
-        withCredentials: true,
-      });
+      const res = await apiClient.get("/user/requests/received");
 
       const normalized = (Array.isArray(res.data?.data) ? res.data.data : [])
         .map((request) => {
@@ -88,11 +86,7 @@ const Requests = () => {
     setFeedback(null);
 
     try {
-      await axios.post(
-        `${BASE_URL}/request/review/${status}/${requestId}`,
-        {},
-        { withCredentials: true },
-      );
+      await apiClient.post(`/request/review/${status}/${requestId}`);
 
       dispatch(removeRequest(requestId));
 

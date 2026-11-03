@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Alert from "./ui/Alert";
@@ -9,7 +8,8 @@ import Icon from "./ui/Icon";
 import PageHeader from "./ui/PageHeader";
 import SkillBadge from "./ui/SkillBadge";
 import { CardSkeleton } from "./ui/Skeletons";
-import { BASE_URL, GENDER_LABELS } from "../utils/constants";
+import apiClient from "../utils/apiClient";
+import { GENDER_LABELS } from "../utils/constants";
 import { addConnections } from "../utils/connectionSlice";
 import {
   getFullName,
@@ -40,9 +40,7 @@ const Connections = () => {
       setError("");
 
       try {
-        const res = await axios.get(`${BASE_URL}/user/connection`, {
-          withCredentials: true,
-        });
+        const res = await apiClient.get("/user/connection");
 
         const users = normalizeUsers(res.data?.data ?? []);
         dispatch(addConnections(users));

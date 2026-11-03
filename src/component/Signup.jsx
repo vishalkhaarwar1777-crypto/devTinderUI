@@ -1,14 +1,13 @@
 import { useState } from "react";
-import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import AuthLayout from "./ui/AuthLayout";
 import Alert from "./ui/Alert";
 import Icon from "./ui/Icon";
-import { BASE_URL } from "../utils/constants";
+import apiClient from "../utils/apiClient";
 import { addUser } from "../utils/userSlice";
 import { normalizeUser } from "../utils/normalizeUser";
-import { getErrorMessage } from "../utils/apiError";
+import { getErrorMessage, isUnauthorizedError } from "../utils/apiError";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -93,31 +92,33 @@ const Signup = () => {
     };
 
     try {
-      await axios.post(
-        `${BASE_URL}/signup`,
-        {
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          ...credentials,
-        },
-        { withCredentials: true },
-      );
+      await apiClient.post("/signup", {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        ...credentials,
+      });
 
       // The API does not set a cookie on /signup, so sign in right after
       // creating the account for a smooth first-run experience.
       try {
-        const loginRes = await axios.post(`${BASE_URL}/login`, credentials, {
-          withCredentials: true,
-        });
+        const loginRes = await apiClient.post("/login", credentials);
 
         let profile = normalizeUser(loginRes.data?.user);
 
         try {
-          const profileRes = await axios.get(`${BASE_URL}/profile/view`, {
-            withCredentials: true,
-          });
+          const profileRes = await apiClient.get("/profile/view");
           profile = normalizeUser(profileRes.data) || profile;
-        } catch {
+        } catch (profileError) {
+          if (isUnauthorizedError(profileError)) {
+            navigate("/login", {
+              replace: true,
+              state: {
+                message:
+                  "Account created, but the session cookie was not accepted. Please sign in again.",
+              },
+            });
+            return;
+          }
           // The login payload is enough to enter the app.
         }
 

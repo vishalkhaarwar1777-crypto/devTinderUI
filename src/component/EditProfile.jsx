@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import Alert from "./ui/Alert";
 import Avatar from "./ui/Avatar";
@@ -8,7 +7,8 @@ import EmptyState from "./ui/EmptyState";
 import Icon from "./ui/Icon";
 import PageHeader from "./ui/PageHeader";
 import SkillBadge from "./ui/SkillBadge";
-import { BASE_URL, GENDER_LABELS } from "../utils/constants";
+import apiClient from "../utils/apiClient";
+import { GENDER_LABELS } from "../utils/constants";
 import { addUser } from "../utils/userSlice";
 import { normalizeUser } from "../utils/normalizeUser";
 import { getErrorMessage } from "../utils/apiError";
@@ -151,9 +151,7 @@ const EditProfile = () => {
       if (formData.age !== "") payload.age = Number(formData.age);
       if (formData.gender) payload.gender = formData.gender;
 
-      const res = await axios.patch(`${BASE_URL}/profile/edit`, payload, {
-        withCredentials: true,
-      });
+      const res = await apiClient.patch("/profile/edit", payload);
 
       const updatedUser = normalizeUser(res.data?.data);
 

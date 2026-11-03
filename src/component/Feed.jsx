@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
 import Alert from "./ui/Alert";
 import EmptyState from "./ui/EmptyState";
@@ -7,7 +6,7 @@ import Icon from "./ui/Icon";
 import PageHeader from "./ui/PageHeader";
 import { CardSkeleton } from "./ui/Skeletons";
 import UserCard from "./UserCard";
-import { BASE_URL } from "../utils/constants";
+import apiClient from "../utils/apiClient";
 import { addFeed, appendFeed, removeUserFromFeed } from "../utils/feedSlice";
 import { normalizeUsers } from "../utils/normalizeUser";
 import { getErrorMessage } from "../utils/apiError";
@@ -37,8 +36,7 @@ const Feed = () => {
       setError("");
 
       try {
-        const res = await axios.get(`${BASE_URL}/feed`, {
-          withCredentials: true,
+        const res = await apiClient.get("/feed", {
           params: { page: nextPage, limit: PAGE_SIZE },
         });
 
@@ -139,11 +137,7 @@ const Feed = () => {
     setFeedback(null);
 
     try {
-      await axios.post(
-        `${BASE_URL}/request/send/${status}/${userId}`,
-        {},
-        { withCredentials: true },
-      );
+      await apiClient.post(`/request/send/${status}/${userId}`);
 
       dispatch(removeUserFromFeed(userId));
       setFeedback({
