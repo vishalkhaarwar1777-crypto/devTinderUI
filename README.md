@@ -39,13 +39,17 @@ The development server starts on the URL printed by Vite (typically `http://loca
 
 ### Environment variables
 
-The client reads the backend URL from the `VITE_BASE_URL` environment variable. Create a local `.env` file in the project root:
+The client reads the backend URL from the `VITE_BASE_URL` environment variable.
 
-```bash
-VITE_BASE_URL=http://localhost:3000
-```
+- Local development: put `VITE_BASE_URL=http://localhost:3000` in `.env`.
+- Production: `.env.production` points at `https://codemate-wn1u.onrender.com`.
+  If `VITE_BASE_URL` is missing (or accidentally set to localhost) in a
+  production build, the app falls back to that Render URL instead of sending
+  requests to the visitor's machine.
 
-If `VITE_BASE_URL` is not set, requests will not reach the API. Keep your local `.env` file out of version control.
+The Render backend must allow the deployed frontend origin in its CORS
+configuration (with credentials enabled), otherwise the browser blocks every
+request before it reaches the API.
 
 ## Available scripts
 

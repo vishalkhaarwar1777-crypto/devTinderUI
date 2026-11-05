@@ -46,7 +46,8 @@ const Feed = () => {
 
         // The backend also hides users you already interacted with. Filtering
         // your own profile here is a defensive fix for a backend query typo.
-        const users = normalizeUsers(res.data).filter(
+        const rawUsers = normalizeUsers(res.data);
+        const users = rawUsers.filter(
           (user) => user._id && user._id !== currentUserId,
         );
 
@@ -57,7 +58,9 @@ const Feed = () => {
         }
 
         setPage(nextPage);
-        setHasMore(users.length === PAGE_SIZE);
+        // Base "is there another page?" on the unfiltered page size: removing
+        // your own profile must not hide the next page of results.
+        setHasMore(rawUsers.length === PAGE_SIZE);
       } catch (err) {
         setError(getErrorMessage(err, "Could not load the developer feed."));
       } finally {

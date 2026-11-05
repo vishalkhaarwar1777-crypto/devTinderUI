@@ -10,8 +10,20 @@ import SkillBadge from "./ui/SkillBadge";
 import apiClient from "../utils/apiClient";
 import { GENDER_LABELS } from "../utils/constants";
 import { addUser } from "../utils/userSlice";
-import { normalizeUser } from "../utils/normalizeUser";
+import { normalizeUserPayload } from "../utils/normalizeUser";
 import { getErrorMessage } from "../utils/apiError";
+
+// Keep the client-side rules in sync with what PATCH /profile/edit accepts, so
+// users get instant feedback instead of a round trip to the API.
+const LIMITS = {
+  firstNameMin: 4,
+  firstNameMax: 50,
+  lastNameMax: 50,
+  aboutMax: 1000,
+  photoMax: 2048,
+  skillsMax: 20,
+  skillMax: 50,
+};
 
 const toFormData = (user) => ({
   firstName: user?.firstName ?? "",
@@ -48,6 +60,7 @@ const EditProfile = () => {
   const [loading, setLoading] = useState(false);
 
   const redirectTimer = useRef(null);
+  const syncedUserRef = useRef(user?._id ?? null);
 
   useEffect(
     () => () => {
@@ -55,6 +68,19 @@ const EditProfile = () => {
     },
     [],
   );
+
+  // `Body` normally loads the user before this page mounts, but if the user
+  // arrives later (or changes) the form must be filled with their real values
+  // instead of staying empty.
+  useEffect(() => {
+    const userId = user?._id;
+
+    if (!userId || userId === syncedUserRef.current) return;
+
+    syncedUserRef.current = userId;
+    setFormData(toFormData(user));
+    setErrors({});
+  }, [user]);
 
   if (!user) {
     return (
@@ -91,24 +117,53 @@ const EditProfile = () => {
   const validate = () => {
     const nextErrors = {};
     const firstName = formData.firstName.trim();
+    const lastName = formData.lastName.trim();
 
     if (!firstName) {
       nextErrors.firstName = "First name is required.";
-    } else if (firstName.length < 4) {
-      nextErrors.firstName = "Use at least 4 characters.";
+    } else if (firstName.length < LIMITS.firstNameMin) {
+      nextErrors.firstName = `Use at least ${LIMITS.firstNameMin} characters.`;
+    } else if (firstName.length > LIMITS.firstNameMax) {
+      nextErrors.firstName = `Use ${LIMITS.firstNameMax} characters or fewer.`;
+    }
+
+    if (!lastName) {
+      nextErrors.lastName = "Last name is required.";
+    } else if (lastName.length > LIMITS.lastNameMax) {
+      nextErrors.lastName = `Use ${LIMITS.lastNameMax} characters or fewer.`;
     }
 
     if (formData.age !== "") {
       const age = Number(formData.age);
 
-      if (!Number.isFinite(age) || age < 18 || age > 120) {
-        nextErrors.age = "Age must be between 18 and 120.";
+      // The API only accepts whole numbers, so "24.5" would be rejected after
+      // a round trip. Catch it here instead.
+      if (!Number.isInteger(age) || age < 18 || age > 120) {
+        nextErrors.age = "Age must be a whole number between 18 and 120.";
+      }
+    }
+
+    if (formData.about.trim().length > LIMITS.aboutMax) {
+      nextErrors.about = `Use ${LIMITS.aboutMax} characters or fewer.`;
+    }
+
+    if (skillsPreview.length > LIMITS.skillsMax) {
+      nextErrors.skill = `Add at most ${LIMITS.skillsMax} skills.`;
+    } else {
+      const longSkill = skillsPreview.find(
+        (skill) => skill.length > LIMITS.skillMax,
+      );
+
+      if (longSkill) {
+        nextErrors.skill = `"${longSkill.slice(0, 20)}…" is too long. Each skill must be ${LIMITS.skillMax} characters or fewer.`;
       }
     }
 
     const photo = formData.profilePhoto.trim();
 
-    if (photo) {
+    if (photo.length > LIMITS.photoMax) {
+      nextErrors.profilePhoto = `Use an image URL with ${LIMITS.photoMax} characters or fewer.`;
+    } else if (photo) {
       try {
         const url = new URL(photo);
 
@@ -127,6 +182,8 @@ const EditProfile = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (loading) return;
 
     if (!validate()) {
       setFeedback({
@@ -153,10 +210,25 @@ const EditProfile = () => {
 
       const res = await apiClient.patch("/profile/edit", payload);
 
-      const updatedUser = normalizeUser(res.data?.data);
+      // `/profile/edit` returns `{ data: user }`, but fall back to the other
+      // shapes and, if needed, refetch the canonical profile so the navbar and
+      // every other page see the new values immediately.
+      let updatedUser = normalizeUserPayload(res.data);
+
+      if (!updatedUser?._id) {
+        try {
+          const profileRes = await apiClient.get("/profile/view");
+          updatedUser = normalizeUserPayload(profileRes.data);
+        } catch {
+          // The PATCH already succeeded; do not turn a successful save into an
+          // error just because the follow-up refresh failed.
+        }
+      }
 
       if (updatedUser) {
         dispatch(addUser(updatedUser));
+        syncedUserRef.current = updatedUser._id ?? syncedUserRef.current;
+        setFormData(toFormData(updatedUser));
       }
 
       setFeedback({
@@ -219,6 +291,7 @@ const EditProfile = () => {
                     value={formData.firstName}
                     onChange={handleChange}
                     required
+                    maxLength={LIMITS.firstNameMax}
                     aria-invalid={Boolean(errors.firstName)}
                     aria-describedby={
                       errors.firstName ? "firstName-error" : undefined
@@ -246,9 +319,19 @@ const EditProfile = () => {
                     autoComplete="family-name"
                     value={formData.lastName}
                     onChange={handleChange}
-                    className={inputClass(false)}
+                    maxLength={LIMITS.lastNameMax}
+                    aria-invalid={Boolean(errors.lastName)}
+                    aria-describedby={
+                      errors.lastName ? "lastName-error" : undefined
+                    }
+                    className={inputClass(errors.lastName)}
                     placeholder="Chen"
                   />
+                  {errors.lastName && (
+                    <p id="lastName-error" className="field-error">
+                      {errors.lastName}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -306,6 +389,7 @@ const EditProfile = () => {
                 id="profilePhoto"
                 name="profilePhoto"
                 type="url"
+                maxLength={LIMITS.photoMax}
                 value={formData.profilePhoto}
                 onChange={handleChange}
                 aria-invalid={Boolean(errors.profilePhoto)}
@@ -335,14 +419,26 @@ const EditProfile = () => {
                 id="about"
                 name="about"
                 rows={5}
+                maxLength={LIMITS.aboutMax}
                 value={formData.about}
                 onChange={handleChange}
-                className="textarea textarea-bordered min-h-32 w-full border-base-300 bg-base-100/50 text-sm leading-6 placeholder:text-base-content/40 focus:border-primary/60"
+                aria-invalid={Boolean(errors.about)}
+                aria-describedby={errors.about ? "about-error" : undefined}
+                className={`textarea textarea-bordered min-h-32 w-full border-base-300 bg-base-100/50 text-sm leading-6 placeholder:text-base-content/40 focus:border-primary/60 ${
+                  errors.about ? "border-error/60" : ""
+                }`}
                 placeholder="Full-stack developer focused on React and Node.js. Currently building developer tools and looking for collaborators."
               />
-              <p className="field-hint">
-                {formData.about.length} characters · Keep it short and specific.
-              </p>
+              {errors.about ? (
+                <p id="about-error" className="field-error">
+                  {errors.about}
+                </p>
+              ) : (
+                <p className="field-hint">
+                  {formData.about.length}/{LIMITS.aboutMax} characters · Keep it
+                  short and specific.
+                </p>
+              )}
             </div>
 
             <div className="border-t border-base-300/60 pt-6">
@@ -355,13 +451,21 @@ const EditProfile = () => {
                 type="text"
                 value={formData.skill}
                 onChange={handleChange}
-                className={inputClass(false)}
+                aria-invalid={Boolean(errors.skill)}
+                aria-describedby={errors.skill ? "skill-error" : "skill-hint"}
+                className={inputClass(errors.skill)}
                 placeholder="React, Node.js, TypeScript, MongoDB"
               />
-              <p className="field-hint">
-                Separate skills with commas. These appear as badges on your
-                profile.
-              </p>
+              {errors.skill ? (
+                <p id="skill-error" className="field-error">
+                  {errors.skill}
+                </p>
+              ) : (
+                <p id="skill-hint" className="field-hint">
+                  Separate skills with commas. These appear as badges on your
+                  profile.
+                </p>
+              )}
 
               {skillsPreview.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">

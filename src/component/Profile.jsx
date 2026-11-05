@@ -66,7 +66,7 @@ const Profile = () => {
             className="absolute -right-5 -top-5 text-primary/10"
             strokeWidth={1.2}
           />
-          <div className="absolute bottom-4 left-5 font-mono text-[10px] uppercase tracking-[0.22em] text-base-content/60 sm:left-8">
+          <div className="absolute left-5 top-4 font-mono text-[10px] uppercase tracking-[0.22em] text-base-content/60 sm:left-8">
             Developer profile
           </div>
         </div>

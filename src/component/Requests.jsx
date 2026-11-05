@@ -12,7 +12,7 @@ import apiClient from "../utils/apiClient";
 import { GENDER_LABELS } from "../utils/constants";
 import { addRequests, removeRequest } from "../utils/requestSlice";
 import { removeConnections } from "../utils/connectionSlice";
-import { getFullName, normalizeUser } from "../utils/normalizeUser";
+import { getFullName, normalizeRequests } from "../utils/normalizeUser";
 import { getErrorMessage } from "../utils/apiError";
 
 const formatReceivedAt = (value) => {
@@ -45,14 +45,7 @@ const Requests = () => {
     try {
       const res = await apiClient.get("/user/requests/received");
 
-      const normalized = (Array.isArray(res.data?.data) ? res.data.data : [])
-        .map((request) => {
-          const sender = normalizeUser(request.fromUserId);
-          return sender ? { ...request, fromUserId: sender } : null;
-        })
-        .filter(Boolean);
-
-      dispatch(addRequests(normalized));
+      dispatch(addRequests(normalizeRequests(res.data?.data)));
     } catch (err) {
       setError(
         getErrorMessage(err, "Could not load your connection requests."),

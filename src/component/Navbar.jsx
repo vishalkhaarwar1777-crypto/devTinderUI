@@ -8,7 +8,8 @@ import apiClient from "../utils/apiClient";
 import { removeUser } from "../utils/userSlice";
 import { removeFeed } from "../utils/feedSlice";
 import { removeConnections } from "../utils/connectionSlice";
-import { removeRequests } from "../utils/requestSlice";
+import { addRequests, removeRequests } from "../utils/requestSlice";
+import { normalizeRequests } from "../utils/normalizeUser";
 import { getErrorMessage } from "../utils/apiError";
 
 const navItems = [
@@ -60,6 +61,28 @@ const Navbar = () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [mobileOpen, profileOpen]);
+
+  // Load pending requests as soon as a user is available so the badge in the
+  // navbar is accurate even before the Requests page is opened. Errors are
+  // intentionally ignored here; the Requests page shows them in context.
+  useEffect(() => {
+    if (!user?._id) return undefined;
+
+    let cancelled = false;
+
+    apiClient
+      .get("/user/requests/received")
+      .then((res) => {
+        if (!cancelled) {
+          dispatch(addRequests(normalizeRequests(res.data?.data)));
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?._id, dispatch]);
 
   const handleLogout = async () => {
     setLoggingOut(true);

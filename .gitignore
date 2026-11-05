@@ -29,3 +29,6 @@ dist/
 .env
 .env.*
 !.env.example
+# The production API URL is not a secret: committing it guarantees Vercel
+# builds never fall back to localhost.
+!.env.production

@@ -25,7 +25,16 @@ const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error?.response?.status === 401) {
+    const status = error?.response?.status;
+    const config = error?.config ?? {};
+    const url = typeof config.url === "string" ? config.url : "";
+    const isAuthAttempt = url.includes("/login") || url.includes("/signup");
+
+    // Do not wipe the session for a failed login/signup, and let the initial
+    // "is there a session?" probe opt out. On a cold Render instance that
+    // probe can answer 401 long after the visitor has already logged in, and
+    // clearing the user here would bounce them straight back to /login.
+    if (status === 401 && !config.skipAuthClear && !isAuthAttempt) {
       appStore.dispatch(removeUser());
     }
 

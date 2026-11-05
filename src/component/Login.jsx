@@ -6,7 +6,7 @@ import Alert from "./ui/Alert";
 import Icon from "./ui/Icon";
 import apiClient from "../utils/apiClient";
 import { addUser } from "../utils/userSlice";
-import { normalizeUser } from "../utils/normalizeUser";
+import { normalizeUserPayload } from "../utils/normalizeUser";
 import { getErrorMessage, isUnauthorizedError } from "../utils/apiError";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -72,11 +72,11 @@ const Login = () => {
 
       // The login response now contains canonical profile fields. Fetching the
       // profile also proves that the browser accepted the HTTP-only cookie.
-      let profile = normalizeUser(res.data?.user);
+      let profile = normalizeUserPayload(res.data);
 
       try {
         const profileRes = await apiClient.get("/profile/view");
-        profile = normalizeUser(profileRes.data) || profile;
+        profile = normalizeUserPayload(profileRes.data) || profile;
       } catch (profileError) {
         if (isUnauthorizedError(profileError)) {
           setApiError(
@@ -92,6 +92,7 @@ const Login = () => {
       const requestedPath =
         typeof location.state?.from === "string" &&
         location.state.from.startsWith("/") &&
+        !location.state.from.startsWith("//") &&
         !["/login", "/signup"].includes(location.state.from)
           ? location.state.from
           : "/";

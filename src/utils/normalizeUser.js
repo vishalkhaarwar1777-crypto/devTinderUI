@@ -28,10 +28,50 @@ export const normalizeUser = (rawUser) => {
   };
 };
 
+/**
+ * Endpoints are not consistent about wrapping the user: `/profile/view` returns
+ * the object directly, `/profile/edit` returns `{ data }`, and `/login` returns
+ * `{ user }`. Accept all three shapes so a response change cannot silently wipe
+ * the Redux user (which is what made the navbar/profile appear empty).
+ */
+export const normalizeUserPayload = (payload) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+
+  const nested =
+    payload.data && typeof payload.data === "object" && !Array.isArray(payload.data)
+      ? payload.data
+      : payload.user &&
+          typeof payload.user === "object" &&
+          !Array.isArray(payload.user)
+        ? payload.user
+        : null;
+
+  return normalizeUser(nested ?? payload);
+};
+
 export const normalizeUsers = (users) => {
   if (!Array.isArray(users)) return [];
 
   return users.map(normalizeUser).filter(Boolean);
+};
+
+/**
+ * `/user/requests/received` returns `{ data: [{ fromUserId: <user> }] }`.
+ * Normalize the nested sender once so the requests page and the navbar badge
+ * always read the same data.
+ */
+export const normalizeRequests = (requests) => {
+  if (!Array.isArray(requests)) return [];
+
+  return requests
+    .map((request) => {
+      const sender = normalizeUser(request?.fromUserId);
+
+      return sender ? { ...request, fromUserId: sender } : null;
+    })
+    .filter(Boolean);
 };
 
 export const getFullName = (user) => {

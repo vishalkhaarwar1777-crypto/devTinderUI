@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch, useSelector, useStore } from "react-redux";
 import Navbar from "./Navbar";
 import Logo from "./ui/Logo";
 import Icon from "./ui/Icon";
 import { BASE_URL } from "../utils/constants";
 import apiClient from "../utils/apiClient";
 import { addUser } from "../utils/userSlice";
-import { normalizeUser } from "../utils/normalizeUser";
+import { normalizeUserPayload } from "../utils/normalizeUser";
 import { getErrorMessage, isUnauthorizedError } from "../utils/apiError";
 
 const FullPageLoader = () => (
@@ -63,6 +63,7 @@ const Footer = () => (
 
 const Body = () => {
   const dispatch = useDispatch();
+  const store = useStore();
   const location = useLocation();
   const user = useSelector((store) => store.user);
 
@@ -70,23 +71,36 @@ const Body = () => {
   const [error, setError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
 
+  const isAuthRoute =
+    location.pathname === "/login" || location.pathname === "/signup";
+
   useEffect(() => {
     let cancelled = false;
 
+    // We still check the session on /login and /signup so a signed-in visitor
+    // is redirected home. The pages themselves are rendered immediately below
+    // (the loader and startup error are suppressed on auth routes), so a slow
+    // or sleeping backend can never block the login form.
     const fetchUser = async () => {
       setLoading(true);
       setError("");
 
       try {
-        const res = await apiClient.get("/profile/view");
+        const res = await apiClient.get("/profile/view", {
+          skipAuthClear: true,
+        });
 
         if (!cancelled) {
-          dispatch(addUser(normalizeUser(res.data)));
+          dispatch(addUser(normalizeUserPayload(res.data)));
         }
       } catch (err) {
         if (cancelled) return;
 
-        dispatch(addUser(null));
+        // A slow 401 from this probe must not log out a user who signed in
+        // while the request was in flight.
+        if (!store.getState().user) {
+          dispatch(addUser(null));
+        }
 
         if (isUnauthorizedError(err) || err.response?.status === 400) {
           setLoading(false);
@@ -109,16 +123,25 @@ const Body = () => {
     return () => {
       cancelled = true;
     };
-  }, [dispatch, retryCount]);
+  }, [dispatch, store, retryCount]);
 
   const retry = useCallback(() => setRetryCount((count) => count + 1), []);
 
-  const isAuthRoute =
-    location.pathname === "/login" || location.pathname === "/signup";
+  // Login saves the page the visitor originally wanted in `location.state.from`.
+  // Body must honour it too: once the user appears in Redux, this redirect can
+  // win the race against Login's own navigate() and would otherwise always send
+  // the user to the feed. Reject protocol-relative URLs ("//evil.example").
+  const requestedPath =
+    typeof location.state?.from === "string" &&
+    location.state.from.startsWith("/") &&
+    !location.state.from.startsWith("//") &&
+    !["/login", "/signup"].includes(location.state.from)
+      ? location.state.from
+      : "/";
 
-  if (loading) return <FullPageLoader />;
+  if (loading && !isAuthRoute) return <FullPageLoader />;
 
-  if (error && !user) {
+  if (error && !user && !isAuthRoute) {
     return <StartupError message={error} onRetry={retry} />;
   }
 
@@ -133,7 +156,7 @@ const Body = () => {
   }
 
   if (user && isAuthRoute) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={requestedPath} replace />;
   }
 
   return (

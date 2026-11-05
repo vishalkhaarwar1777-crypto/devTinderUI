@@ -6,10 +6,16 @@ import Alert from "./ui/Alert";
 import Icon from "./ui/Icon";
 import apiClient from "../utils/apiClient";
 import { addUser } from "../utils/userSlice";
-import { normalizeUser } from "../utils/normalizeUser";
+import { normalizeUserPayload } from "../utils/normalizeUser";
 import { getErrorMessage, isUnauthorizedError } from "../utils/apiError";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// bcrypt only reads the first 72 bytes of a password, and the API rejects
+// anything longer. Check it here so the user gets instant feedback.
+const PASSWORD_MAX_BYTES = 72;
+const passwordByteLength = (value) =>
+  new TextEncoder().encode(value).length;
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -48,10 +54,16 @@ const Signup = () => {
       nextErrors.firstName = "First name is required.";
     } else if (firstName.length < 4) {
       nextErrors.firstName = "Use at least 4 characters.";
+    } else if (firstName.length > 50) {
+      nextErrors.firstName = "Use 50 characters or fewer.";
     }
 
-    if (!formData.lastName.trim()) {
+    const lastName = formData.lastName.trim();
+
+    if (!lastName) {
       nextErrors.lastName = "Last name is required.";
+    } else if (lastName.length > 50) {
+      nextErrors.lastName = "Use 50 characters or fewer.";
     }
 
     const email = formData.emailId.trim();
@@ -66,6 +78,8 @@ const Signup = () => {
       nextErrors.password = "Password is required.";
     } else if (formData.password.length < 8) {
       nextErrors.password = "Use at least 8 characters.";
+    } else if (passwordByteLength(formData.password) > PASSWORD_MAX_BYTES) {
+      nextErrors.password = "Password is too long. Use at most 72 characters.";
     }
 
     if (!formData.confirmPassword) {
@@ -103,11 +117,11 @@ const Signup = () => {
       try {
         const loginRes = await apiClient.post("/login", credentials);
 
-        let profile = normalizeUser(loginRes.data?.user);
+        let profile = normalizeUserPayload(loginRes.data);
 
         try {
           const profileRes = await apiClient.get("/profile/view");
-          profile = normalizeUser(profileRes.data) || profile;
+          profile = normalizeUserPayload(profileRes.data) || profile;
         } catch (profileError) {
           if (isUnauthorizedError(profileError)) {
             navigate("/login", {
@@ -172,6 +186,7 @@ const Signup = () => {
                 autoComplete="given-name"
                 value={formData.firstName}
                 onChange={handleChange}
+                maxLength={50}
                 aria-invalid={Boolean(errors.firstName)}
                 aria-describedby={
                   errors.firstName ? "firstName-error" : "firstName-hint"
@@ -201,6 +216,7 @@ const Signup = () => {
                 autoComplete="family-name"
                 value={formData.lastName}
                 onChange={handleChange}
+                maxLength={50}
                 aria-invalid={Boolean(errors.lastName)}
                 aria-describedby={
                   errors.lastName ? "lastName-error" : undefined
@@ -249,6 +265,7 @@ const Signup = () => {
                 name="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
+                maxLength={72}
                 value={formData.password}
                 onChange={handleChange}
                 aria-invalid={Boolean(errors.password)}
